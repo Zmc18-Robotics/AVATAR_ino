@@ -16,6 +16,7 @@ IoT Control from ESP32 IP Addres ( to check it, you must to see the serial monit
 
 //check the serial monitor, restart your ESP32 to see it in serial monitor, and dont forget to connect your device and your ESP32 with the same wifi so you can open your ESP32 IP Address in your browser
 
+
 //cek serial monitor untuk IP adress si ESP32, dan jangan lupa untuk restart si ESP32 untuk melihatnya, pastikan device anda terhubung dengan wifi yang sama dengan si ESP32 agar bisa membuka IP addresnya di web
 
 Thanks~ *giggles* *the flesh demand invitation~*

@@ -6,8 +6,8 @@
 #include <SPI.h>
 
 // Konfigurasi WiFi
-const char* ssid = "Absolute Solver2";
-const char* password = "CynIsTheCutestBotEver32";
+const char* ssid = "PUT YOUR WIFI NAME HERE / TARUH NAMA WIFI ANDA DISINI";
+const char* password = "PUT YOUR WIFI PASSWORD HERE / TARUH SANDI WIFI ANDA DISINI";
 
 // Pin Definitions
 #define TRIG_PIN 19
@@ -23,6 +23,11 @@ const char* password = "CynIsTheCutestBotEver32";
 // MAX7219 Configuration - 4 Modules, Rotasi 90 derajat
 #define HARDWARE_TYPE MD_MAX72XX::GENERIC_HW
 #define MAX_DEVICES 4
+
+// Pin RGB LED
+#define LED_R 13
+#define LED_G 12
+#define LED_B 14
 
 // Inisialisasi dengan Software SPI
 MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, MAX_DATA_PIN, MAX_CLK_PIN, MAX_CS_PIN, MAX_DEVICES);
@@ -48,6 +53,16 @@ long lastDistance = -1;
 int swingDelay = 20;
 bool pixelEditorActive = false;
 uint8_t pixelMatrix[32][8]; // 32 columns x 8 rows (4 modules x 8 cols each)
+
+// RGB Control Variables
+bool rgbActive = false;
+int rgbMode = 0; // 0=off, 1=static, 2=blink, 3=random, 4=fade, 5=police
+unsigned long lastRgbUpdate = 0;
+int rgbBlinkState = 0;
+int rgbFadeValue = 0;
+int rgbFadeDirection = 1;
+int rgbPoliceCount = 0;
+int currentR = 0, currentG = 0, currentB = 0;
 
 // Character arrays for cycling
 const char CHAR_SET[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -520,6 +535,57 @@ const char webpage[] PROGMEM = R"rawliteral(
             </div>
         </div>
 
+        <!-- RGB LED CONTROL SECTION -->
+        <div class="control-group">
+            <h2>💡 RGB LED Control</h2>
+            
+            <div id="rgbStatus" class="status status-off">RGB: OFF</div>
+            
+            <div style="background: #1e293b; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                <div id="rgbPreview" style="background: rgb(0,0,0); width: 100%; height: 80px; border-radius: 8px; border: 3px solid #334155; box-shadow: inset 0 0 30px rgba(255,255,255,0.1); transition: all 0.3s ease;"></div>
+                <div style="text-align: center; color: #cbd5e1; margin-top: 10px; font-size: 14px;">
+                    R: <span id="rgbRValue">0</span> | G: <span id="rgbGValue">0</span> | B: <span id="rgbBValue">0</span>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0;">
+                <button class="btn-success" onclick="rgbOn()">💡 ON (White)</button>
+                <button class="btn-danger" onclick="rgbOff()">⚫ OFF</button>
+            </div>
+            
+            <div style="margin: 15px 0; padding: 15px; background: #f0f9ff; border-radius: 8px;">
+                <h3 style="margin: 0 0 10px 0; color: #0c4a6e; font-size: 16px;">🎨 Pilih Warna Preset</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                    <button class="btn-danger" style="padding: 12px; font-size: 13px;" onclick="setColor(255,0,0)">🔴 Merah</button>
+                    <button class="btn-success" style="padding: 12px; font-size: 13px;" onclick="setColor(0,255,0)">🟢 Hijau</button>
+                    <button class="btn-info" style="padding: 12px; font-size: 13px;" onclick="setColor(0,0,255)">🔵 Biru</button>
+                    <button class="btn-warning" style="padding: 12px; font-size: 13px;" onclick="setColor(255,255,0)">🟡 Kuning</button>
+                    <button class="btn-cyan" style="padding: 12px; font-size: 13px;" onclick="setColor(0,255,255)">💠 Cyan</button>
+                    <button class="btn-purple" style="padding: 12px; font-size: 13px;" onclick="setColor(255,0,255)">🟣 Magenta</button>
+                    <button class="btn-primary" style="padding: 12px; font-size: 13px;" onclick="setColor(255,255,255)">⚪ Putih</button>
+                    <button class="btn-warning" style="padding: 12px; font-size: 13px; background: #f97316;" onclick="setColor(255,128,0)">🟠 Orange</button>
+                    <button class="btn-purple" style="padding: 12px; font-size: 13px; background: #7c3aed;" onclick="setColor(128,0,128)">💜 Ungu</button>
+                </div>
+            </div>
+            
+            <div style="margin: 15px 0; padding: 15px; background: #fef3c7; border-radius: 8px;">
+                <h3 style="margin: 0 0 10px 0; color: #78350f; font-size: 16px;">✨ Mode Efek Animasi</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button class="btn-warning" onclick="rgbBlink()">⚡ Blink</button>
+                    <button class="btn-purple" onclick="rgbRandom()">🎲 Random</button>
+                    <button class="btn-info" onclick="rgbFade()">🌊 Fade</button>
+                    <button class="btn-danger" onclick="rgbPolice()">🚨 Polisi</button>
+                </div>
+                <div style="margin-top: 10px; font-size: 12px; color: #78350f; text-align: center;">
+                    Blink: Kedip normal | Random: Warna acak | Fade: Redup-terang | Polisi: Merah-biru
+                </div>
+            </div>
+            
+            <div id="rgbModeInfo" style="background: #dbeafe; padding: 12px; border-radius: 8px; text-align: center; color: #1e40af; font-weight: bold; margin-top: 10px;">
+                Mode: OFF
+            </div>
+        </div>
+
         <!-- CUSTOM TEXT SECTION -->
         <div class="control-group">
             <h2>✏️ Custom Text Display</h2>
@@ -619,6 +685,113 @@ const char webpage[] PROGMEM = R"rawliteral(
         let currentChars = [' ', ' ', ' ', ' '];
         const charset = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let pixelData = [];
+        let currentRgbR = 0, currentRgbG = 0, currentRgbB = 0;
+
+        function rgbOn() {
+            fetch('/rgb-on')
+                .then(response => response.text())
+                .then(data => {
+                    updateStatus();
+                })
+                .catch(err => console.log('Error:', err));
+        }
+
+        function rgbOff() {
+            fetch('/rgb-off')
+                .then(response => response.text())
+                .then(data => {
+                    updateStatus();
+                })
+                .catch(err => console.log('Error:', err));
+        }
+
+        function setColor(r, g, b) {
+            fetch('/rgb-color?r=' + r + '&g=' + g + '&b=' + b)
+                .then(response => response.text())
+                .then(data => {
+                    updateStatus();
+                })
+                .catch(err => console.log('Error:', err));
+        }
+
+        function rgbBlink() {
+            fetch('/rgb-blink')
+                .then(response => response.text())
+                .then(data => {
+                    updateStatus();
+                })
+                .catch(err => console.log('Error:', err));
+        }
+
+        function rgbRandom() {
+            fetch('/rgb-random')
+                .then(response => response.text())
+                .then(data => {
+                    updateStatus();
+                })
+                .catch(err => console.log('Error:', err));
+        }
+
+        function rgbFade() {
+            // Use current color or default to white
+            let r = currentRgbR || 255;
+            let g = currentRgbG || 255;
+            let b = currentRgbB || 255;
+            //By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
+            fetch('/rgb-fade?r=' + r + '&g=' + g + '&b=' + b)
+                .then(response => response.text())
+                .then(data => {
+                    updateStatus();
+                })
+                .catch(err => console.log('Error:', err));
+        }
+
+        function rgbPolice() {
+            fetch('/rgb-police')
+                .then(response => response.text())
+                .then(data => {
+                    updateStatus();
+                })
+                .catch(err => console.log('Error:', err));
+        }
+
+        function updateRgbDisplay(data) {
+            // Update RGB status
+            document.getElementById('rgbStatus').className = 
+                'status ' + (data.rgbActive ? 'status-on' : 'status-off');
+            document.getElementById('rgbStatus').textContent = 
+                'RGB: ' + (data.rgbActive ? 'ON' : 'OFF');
+            
+            // Update RGB values
+            currentRgbR = data.rgbR || 0;
+            currentRgbG = data.rgbG || 0;
+            currentRgbB = data.rgbB || 0;
+            
+            // Update preview box
+            document.getElementById('rgbPreview').style.background = 
+                'rgb(' + currentRgbR + ',' + currentRgbG + ',' + currentRgbB + ')';
+            
+            // Add glow effect if active
+            if(data.rgbActive && (currentRgbR > 0 || currentRgbG > 0 || currentRgbB > 0)) {
+                document.getElementById('rgbPreview').style.boxShadow = 
+                    'inset 0 0 30px rgba(255,255,255,0.3), 0 0 20px rgba(' + 
+                    currentRgbR + ',' + currentRgbG + ',' + currentRgbB + ',0.6)';
+            } else {
+                document.getElementById('rgbPreview').style.boxShadow = 
+                    'inset 0 0 30px rgba(255,255,255,0.1)';
+            }
+            
+            // Update RGB value display
+            document.getElementById('rgbRValue').textContent = currentRgbR;
+            document.getElementById('rgbGValue').textContent = currentRgbG;
+            document.getElementById('rgbBValue').textContent = currentRgbB;
+            
+            // Update mode info
+            let modeText = 'Mode: ';
+            let modeNames = ['OFF', 'Static', 'Blink', 'Random', 'Fade', 'Police'];
+            modeText += modeNames[data.rgbMode] || 'OFF';
+            document.getElementById('rgbModeInfo').textContent = modeText;
+        }
 
         // Initialize pixel canvas
         function initPixelCanvas() {
@@ -707,7 +880,7 @@ const char webpage[] PROGMEM = R"rawliteral(
                     [10,2], [10,5], [21,2], [21,5], // eyes
                     [8,1], [8,6], [9,0], [9,7], [22,0], [22,7], [23,1], [23,6], // outline
                     [12,0], [13,0], [14,0], [15,0], [16,0], [17,0], [18,0], [19,0] // smile
-                ];
+                ]; //By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
             } else if(type === 'heart') {
                 // Heart pattern
                 pattern = [
@@ -783,6 +956,7 @@ const char webpage[] PROGMEM = R"rawliteral(
             fetch('/status')
                 .then(response => response.json())
                 .then(data => {
+                    // Servo status
                     document.getElementById('swingStatus').className = 
                         'status ' + (data.swing ? 'status-on' : 'status-off');
                     document.getElementById('swingStatus').textContent = 
@@ -791,6 +965,7 @@ const char webpage[] PROGMEM = R"rawliteral(
                     document.getElementById('angleDisplay').textContent = 
                         'Angle: ' + data.angle + '°';
                     
+                    // Sensor status
                     let distanceText = 'Distance: ';
                     if(data.distance > 0) {
                         distanceText += data.distance + ' cm';
@@ -808,6 +983,7 @@ const char webpage[] PROGMEM = R"rawliteral(
                         document.getElementById('sensorInfo').className = 'info';
                     }
                     
+                    // Display status
                     let displayText = 'Display: ';
                     if(data.pixelEditorActive) {
                         displayText += '🎨 Pixel Art';
@@ -820,7 +996,7 @@ const char webpage[] PROGMEM = R"rawliteral(
                     }
                     document.getElementById('displayStatus').textContent = displayText;
                     
-                    // Update pixel status
+                    // Pixel status
                     let pixelStatusText = 'Editor: ';
                     if(data.pixelEditorActive) {
                         pixelStatusText += '🟢 Displaying on Device';
@@ -829,8 +1005,10 @@ const char webpage[] PROGMEM = R"rawliteral(
                     }
                     document.getElementById('pixelStatus').textContent = pixelStatusText;
                     
+                    // Speed
                     document.getElementById('currentSpeed').textContent = data.speed;
                     
+                    // Custom text characters
                     if(data.chars) {
                         updateCharDisplay(data.chars);
                     }
@@ -849,6 +1027,9 @@ const char webpage[] PROGMEM = R"rawliteral(
                             }
                         }
                     }
+                    
+                    // RGB LED status update
+                    updateRgbDisplay(data);
                 })
                 .catch(err => console.log('Error:', err));
         }
@@ -933,14 +1114,14 @@ void initPixelMatrix() {
     }
     Serial.println("[PIXEL] Matrix initialized (32x8)");
 }
-
+//By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
 void setup() {
     Serial.begin(115200);
     delay(1000);
     
     Serial.println("\n\n=== ESP32 IoT Control System ===");
     Serial.println("MAX7219 4-Module Rotated 90° Version");
-    Serial.println("Button Control Edition with Pixel Editor");
+    Serial.println("Button Control Edition with Pixel Editor & RGB LED");
     
     // Initialize pixel matrix
     initPixelMatrix();
@@ -950,6 +1131,13 @@ void setup() {
     pinMode(ECHO_PIN, INPUT);
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
+    
+    // Setup RGB LED pins
+    pinMode(LED_R, OUTPUT);
+    pinMode(LED_G, OUTPUT);
+    pinMode(LED_B, OUTPUT);
+    setRGB(0, 0, 0);
+    Serial.println("[OK] RGB LED initialized (R=13, G=12, B=14)");
     
     // Initialize MAX7219 Display
     Serial.println("[INIT] Initializing MAX7219 Display...");
@@ -1003,6 +1191,19 @@ void setup() {
     // Play startup buzzer sequence
     playStartupBuzzer();
     
+    // Test RGB LED - cycle colors
+    Serial.println("[TEST] Testing RGB LED...");
+    setRGB(255, 0, 0); // Red
+    delay(300);
+    setRGB(0, 255, 0); // Green
+    delay(300);
+    setRGB(0, 0, 255); // Blue
+    delay(300);
+    setRGB(255, 255, 255); // White
+    delay(300);
+    setRGB(0, 0, 0); // Off
+    Serial.println("[OK] RGB LED tested");
+    
     // Setup Servo
     ESP32PWM::allocateTimer(0);
     ESP32PWM::allocateTimer(1);
@@ -1029,7 +1230,7 @@ void setup() {
     
     Serial.println("\n[WiFi] Connecting to: " + String(ssid));
     WiFi.begin(ssid, password);
-    
+    //By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 30) {
         delay(500);
@@ -1052,6 +1253,14 @@ void setup() {
         delay(2000);
         mx.clear();
         
+        // Success RGB flash - Green
+        for(int i = 0; i < 3; i++) {
+            setRGB(0, 255, 0);
+            delay(150);
+            setRGB(0, 0, 0);
+            delay(100);
+        }
+        
         for(int i = 0; i < 2; i++) {
             digitalWrite(BUZZER_PIN, HIGH);
             delay(150);
@@ -1063,6 +1272,14 @@ void setup() {
         displayText("FAIL");
         delay(2000);
         mx.clear();
+        
+        // Error RGB flash - Red
+        for(int i = 0; i < 5; i++) {
+            setRGB(255, 0, 0);
+            delay(100);
+            setRGB(0, 0, 0);
+            delay(100);
+        }
         
         for(int i = 0; i < 5; i++) {
             digitalWrite(BUZZER_PIN, HIGH);
@@ -1090,6 +1307,15 @@ void setup() {
     server.on("/clear-pixel-art", handleClearPixelArt);
     server.on("/reset-pixel-editor", handleResetPixelEditor);
     
+    // RGB LED handlers
+    server.on("/rgb-on", handleRgbOn);
+    server.on("/rgb-off", handleRgbOff);
+    server.on("/rgb-color", handleRgbColor);
+    server.on("/rgb-blink", handleRgbBlink);
+    server.on("/rgb-random", handleRgbRandom);
+    server.on("/rgb-fade", handleRgbFade);
+    server.on("/rgb-police", handleRgbPolice);
+    
     server.begin();
     Serial.println("[OK] Web server started");
     
@@ -1099,6 +1325,7 @@ void setup() {
     
     Serial.println("\n=== System Ready ===");
     Serial.println("Access web interface at: http://" + WiFi.localIP().toString());
+    Serial.println("RGB LED: R=13, G=12, B=14");
     Serial.println();
     
     digitalWrite(BUZZER_PIN, HIGH);
@@ -1108,6 +1335,9 @@ void setup() {
 
 void loop() {
     server.handleClient();
+    
+    // Update RGB LED effects
+    updateRgbEffects();
     
     // Check Ultrasonic Sensor (only if custom text and pixel editor are not active)
     if (!customTextActive && !pixelEditorActive && millis() - lastSensorCheck >= SENSOR_CHECK_INTERVAL) {
@@ -1136,7 +1366,7 @@ void loop() {
             }
         }
     }
-    
+    //By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
     // Update Servo
     updateServo();
 }
@@ -1343,7 +1573,7 @@ void handleTestServo() {
     delay(100);
     server.send(200, "text/plain", "OK");
 }
-
+//By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
 void handleTestDisplay() {
     Serial.println("[TEST] Testing display - HALO");
     displayActive = true;
@@ -1439,7 +1669,10 @@ void handleStopAll() {
     sensorTriggered = false;
     customTextActive = false;
     pixelEditorActive = false;
+    rgbActive = false;
+    rgbMode = 0;
     mx.clear();
+    setRGB(0, 0, 0);
     
     Serial.println("[CONTROL] All systems STOPPED");
     server.send(200, "text/plain", "OK");
@@ -1465,6 +1698,14 @@ void handleStatus() {
     json += "\"displayActive\":" + String(displayActive ? "true" : "false") + ",";
     json += "\"customTextActive\":" + String(customTextActive ? "true" : "false") + ",";
     json += "\"pixelEditorActive\":" + String(pixelEditorActive ? "true" : "false") + ",";
+    
+    // RGB LED status
+    json += "\"rgbActive\":" + String(rgbActive ? "true" : "false") + ",";
+    json += "\"rgbMode\":" + String(rgbMode) + ",";
+    json += "\"rgbR\":" + String(currentR) + ",";
+    json += "\"rgbG\":" + String(currentG) + ","; //By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
+    json += "\"rgbB\":" + String(currentB) + ",";
+    
     json += "\"chars\":[";
     for(int i = 0; i < 4; i++) {
         json += "\"" + String(CHAR_SET[charIndices[i]]) + "\"";
@@ -1499,6 +1740,7 @@ void displayPixelArt() {
     
     // PENTING: Module fisik tersambung terbalik (module 0 di kanan)
     // Web canvas: ABCD (kiri ke kanan)
+    //By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
     // Module fisik: 3-2-1-0 (kiri ke kanan)
     // Jadi kita perlu balik urutan module
     
@@ -1601,3 +1843,189 @@ void handleResetPixelEditor() {
     
     server.send(200, "text/plain", "OK");
 }
+
+void setRGB(int r, int g, int b) {
+    analogWrite(LED_R, r);
+    analogWrite(LED_G, g);
+    analogWrite(LED_B, b);
+    currentR = r;
+    currentG = g;
+    currentB = b;
+}
+
+void updateRgbEffects() {
+    if (!rgbActive) return;
+    
+    unsigned long now = millis(); //By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
+    
+    switch(rgbMode) {
+        case 2: // Blink mode
+            if (now - lastRgbUpdate >= 500) {
+                lastRgbUpdate = now;
+                if (rgbBlinkState == 0) {
+                    setRGB(currentR, currentG, currentB);
+                    rgbBlinkState = 1;
+                } else {
+                    setRGB(0, 0, 0);
+                    rgbBlinkState = 0;
+                }
+            }
+            break;
+            
+        case 3: // Random blink mode
+            if (now - lastRgbUpdate >= 300) {
+                lastRgbUpdate = now;
+                setRGB(random(0, 256), random(0, 256), random(0, 256));
+            }
+            break;
+            
+        case 4: // Fade in/out mode
+            if (now - lastRgbUpdate >= 20) {
+                lastRgbUpdate = now;
+                rgbFadeValue += (5 * rgbFadeDirection);
+                //By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
+                if (rgbFadeValue >= 255) {
+                    rgbFadeValue = 255;
+                    rgbFadeDirection = -1;
+                } else if (rgbFadeValue <= 0) {
+                    rgbFadeValue = 0;
+                    rgbFadeDirection = 1;
+                }
+                
+                int r = map(rgbFadeValue, 0, 255, 0, currentR);
+                int g = map(rgbFadeValue, 0, 255, 0, currentG);
+                int b = map(rgbFadeValue, 0, 255, 0, currentB);
+                setRGB(r, g, b);
+            }
+            break;
+            
+        case 5: // Police siren mode
+            if (now - lastRgbUpdate >= 200) {
+                lastRgbUpdate = now;
+                
+                if (rgbPoliceCount < 6) {
+                    // Red phase (3 blinks)
+                    if (rgbBlinkState == 0) {
+                        setRGB(255, 0, 0);
+                        rgbBlinkState = 1;
+                    } else {
+                        setRGB(0, 0, 0);
+                        rgbBlinkState = 0;
+                    }
+                    rgbPoliceCount++;
+                } else if (rgbPoliceCount < 12) {
+                    // Blue phase (3 blinks)
+                    if (rgbBlinkState == 0) {
+                        setRGB(0, 0, 255);
+                        rgbBlinkState = 1;
+                    } else {
+                        setRGB(0, 0, 0);
+                        rgbBlinkState = 0;
+                    }
+                    rgbPoliceCount++;
+                } else {
+                    rgbPoliceCount = 0;
+                }
+            }
+            break;
+    }
+}
+
+void handleRgbOn() {
+    rgbActive = true;
+    rgbMode = 1;
+    setRGB(255, 255, 255); // Default white
+    Serial.println("[RGB] LED ON - White");
+    server.send(200, "text/plain", "OK");
+}
+
+void handleRgbOff() {
+    rgbActive = false;
+    rgbMode = 0;
+    setRGB(0, 0, 0);
+    Serial.println("[RGB] LED OFF");
+    server.send(200, "text/plain", "OK");
+}
+
+void handleRgbColor() {
+    if (server.hasArg("r") && server.hasArg("g") && server.hasArg("b")) {
+        int r = server.arg("r").toInt();
+        int g = server.arg("g").toInt();
+        int b = server.arg("b").toInt();
+        
+        r = constrain(r, 0, 255);
+        g = constrain(g, 0, 255);
+        b = constrain(b, 0, 255);
+        
+        rgbActive = true;
+        rgbMode = 1;
+        setRGB(r, g, b);
+        
+        Serial.println("[RGB] Color set: R=" + String(r) + " G=" + String(g) + " B=" + String(b));
+        server.send(200, "text/plain", "OK");
+        return;
+    }
+    server.send(400, "text/plain", "Invalid parameters");
+}
+
+void handleRgbBlink() {
+    rgbActive = true;
+    rgbMode = 2;
+    rgbBlinkState = 0;
+    lastRgbUpdate = 0;
+    
+    // Use current color or default to white
+    if (currentR == 0 && currentG == 0 && currentB == 0) {
+        currentR = 255;
+        currentG = 255;
+        currentB = 255;
+    }
+    
+    Serial.println("[RGB] Blink mode activated");
+    server.send(200, "text/plain", "OK");
+}
+
+void handleRgbRandom() {
+    rgbActive = true;
+    rgbMode = 3;
+    lastRgbUpdate = 0;
+    Serial.println("[RGB] Random blink mode activated");
+    server.send(200, "text/plain", "OK");
+}
+
+void handleRgbFade() {
+    if (server.hasArg("r") && server.hasArg("g") && server.hasArg("b")) {
+        int r = server.arg("r").toInt();
+        int g = server.arg("g").toInt();
+        int b = server.arg("b").toInt();
+        
+        currentR = constrain(r, 0, 255);
+        currentG = constrain(g, 0, 255);
+        currentB = constrain(b, 0, 255);
+    } else {
+        // Default to white if no color specified
+        currentR = 255;
+        currentG = 255;
+        currentB = 255;
+    }
+    
+    rgbActive = true;
+    rgbMode = 4;
+    rgbFadeValue = 0;
+    rgbFadeDirection = 1;
+    lastRgbUpdate = 0;
+    //By Zmc18_Robotics Zminecrafter @mc.zminecrafter_18 @Zmc18_Roboticz
+    Serial.println("[RGB] Fade mode activated");
+    server.send(200, "text/plain", "OK");
+}
+
+void handleRgbPolice() {
+    rgbActive = true;
+    rgbMode = 5;
+    rgbPoliceCount = 0;
+    rgbBlinkState = 0;
+    lastRgbUpdate = 0;
+    Serial.println("[RGB] Police siren mode activated");
+    server.send(200, "text/plain", "OK");
+}
+

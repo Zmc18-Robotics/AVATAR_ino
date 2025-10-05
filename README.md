@@ -5,15 +5,10 @@ C/C++, HTML, CSS, JS. Avatar for mascott ( wooden plate ). Controllable IoT Avat
 Materials :
 
 ESP32 x1
-
 Ultrasonic Sensor x1
-
 Buzzer x1
-
 MAX7219 x1
-
 Servo SG90 x1
-
 LED RGB x1
 
 

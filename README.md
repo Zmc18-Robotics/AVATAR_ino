@@ -27,4 +27,6 @@ IoT Control from ESP32 IP Addres ( to check it, you must to see the serial monit
 
 //cek serial monitor untuk IP adress si ESP32, dan jangan lupa untuk restart si ESP32 untuk melihatnya, pastikan device anda terhubung dengan wifi yang sama dengan si ESP32 agar bisa membuka IP addresnya di web, pastikan Voltase adalah 5V dan Amperenya diatas 2A
 
+Program made by me, Program dibuat oleh saya ( Zidane )
+
 Thanks~ *giggles* *the flesh demand invitation~*

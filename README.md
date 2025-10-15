@@ -32,4 +32,4 @@ You can check the pins on the decralation part!. Bisa di cek ya pin2 nya dipasan
 
 Program made by me, Program dibuat oleh saya ( Zidane )
 
-Thanks~ *giggles* *the flesh demand invitation~*
+Thanks~ 
